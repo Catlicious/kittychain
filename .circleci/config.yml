@@ -67,6 +67,7 @@ jobs:
     docker:
       - image: kittychain/build_base:1.0
     working_directory: /go/src/github.com/kittychain/kittychain
+    resource_class: xlarge
     steps:
       - checkout
       - run:
