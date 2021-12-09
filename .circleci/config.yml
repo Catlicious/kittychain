@@ -2,14 +2,6 @@
 #
 # Check https://circleci.com/docs/2.0/language-go/ for more details
 version: 2.1
-executors:
-  build_base:
-    docker:
-      - image: kittychain/build_base:1.0-go1.13.3-solc0.4.24
-  rpmbuild:
-    docker:
-      - image: kittychaindevops/circleci-rpmbuild:1.13.3
-
 jobs:
   build:
     machine: true
@@ -27,7 +19,8 @@ jobs:
             make all
 
   test-datasync:
-    executor: build_base
+    docker:
+      - image: kittychain/build_base:1.0
     working_directory: /go/src/github.com/kittychain/kittychain
     steps:
       - checkout
@@ -37,7 +30,8 @@ jobs:
             make test-datasync
 
   test-networks:
-    executor: build_base
+    docker:
+      - image: kittychain/build_base:1.0
     working_directory: /go/src/github.com/kittychain/kittychain
     steps:
       - checkout
@@ -47,7 +41,8 @@ jobs:
             make test-networks
 
   test-tests:
-    executor: build_base
+    docker:
+      - image: kittychain/build_base:1.0
     working_directory: /go/src/github.com/kittychain/kittychain
     steps:
       - checkout
@@ -58,7 +53,8 @@ jobs:
             make test-tests
 
   test-others:
-    executor: build_base
+    docker:
+      - image: kittychain/build_base:1.0
     working_directory: /go/src/github.com/kittychain/kittychain
     steps:
       - checkout
@@ -68,7 +64,8 @@ jobs:
             make test-others
 
   coverage:
-    executor: build_base
+    docker:
+      - image: kittychain/build_base:1.0
     working_directory: /go/src/github.com/kittychain/kittychain
     resource_class: xlarge
     steps:
@@ -89,7 +86,8 @@ jobs:
           path: /tmp/coverage_reports
 
   linters:
-    executor: build_base
+    docker:
+      - image: circleci/golang:1.11.2
     working_directory: /go/src/github.com/kittychain/kittychain
     steps:
       - checkout
@@ -299,7 +297,8 @@ jobs:
 
 
   rpm-untagged:
-    executor: rpmbuild
+    docker:
+      - image: kittychaindevops/circleci-rpmbuild:1.12.5
     working_directory: /go/src/github.com/kittychain/kittychain
     steps:
       - checkout
@@ -321,7 +320,8 @@ jobs:
             ssh -o StrictHostKeyChecking=no ec2-user@52.79.114.173 createrepo --update /srv/repo
 
   rpm-tagged:
-    executor: rpmbuild
+    docker:
+      - image: kittychaindevops/circleci-rpmbuild:1.12.5
     working_directory: /go/src/github.com/kittychain/kittychain
     steps:
       - checkout
@@ -352,7 +352,8 @@ jobs:
             ssh -o StrictHostKeyChecking=no ec2-user@52.79.114.173 createrepo --update /srv/repo
 
   rpm-tagged-baobab:
-    executor: rpmbuild
+    docker:
+      - image: kittychaindevops/circleci-rpmbuild:1.12.5
     working_directory: /go/src/github.com/kittychain/kittychain
     steps:
       - checkout
@@ -383,7 +384,8 @@ jobs:
             ssh -o StrictHostKeyChecking=no ec2-user@52.79.114.173 createrepo --update /srv/repo
 
   deploy-rpm-private:
-    executor: rpmbuild
+    docker:
+      - image: kittychaindevops/circleci-rpmbuild:1.12.5
     steps:
       - add_ssh_keys:
           fingerprints:
