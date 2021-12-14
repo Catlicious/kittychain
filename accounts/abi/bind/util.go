@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kittychain/kittychain/blockchain"
 	"github.com/kittychain/kittychain/blockchain/types"
 	"github.com/kittychain/kittychain/common"
 	"github.com/kittychain/kittychain/log"
@@ -73,7 +74,7 @@ func CheckWaitMined(b DeployBackend, tx *types.Transaction) error {
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		return errors.New("not successful receipt")
+		return blockchain.GetVMerrFromReceiptStatus(receipt.Status)
 	}
 	return nil
 }
