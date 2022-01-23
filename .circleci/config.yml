@@ -87,7 +87,7 @@ jobs:
 
   linters:
     docker:
-      - image: circleci/golang:1.11.2
+      - image: kittychain/build_base:1.0
     working_directory: /go/src/github.com/kittychain/kittychain
     steps:
       - checkout
