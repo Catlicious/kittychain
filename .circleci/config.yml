@@ -25,7 +25,7 @@ executors:
   rpm-executor:
     working_directory: /go/src/github.com/kittychain/kittychain
     docker:
-      - image: kittychain/circleci-rpmbuild:1.13.3-5
+      - image: kittychain/circleci-rpmbuild:1.13.3-4
   default:
     working_directory: /go/src/github.com/kittychain/kittychain
     docker:
@@ -39,7 +39,6 @@ commands:
           name: "set variables"
           command: |
             export GOPATH=~/go
-            export PATH=$HOME/go1.13.3/go/bin:$PATH
             echo "export KITTYCHAIN_RELEASE_NUM=$(go run build/rpm/main.go release_num)" >> $BASH_ENV
             if [ -z "$CIRCLE_TAG" ]; then
               echo "this is not RC version"
@@ -59,12 +58,8 @@ commands:
         default: "tar-linux-amd64-all"
     steps:
       - run:
-          name: "build new(Cross compile)"
-          command: |
-            export GOPATH=~/go 
-            export PATH=$HOME/go1.13.3/go/bin:$PATH 
-            go version
-            make -j 4 << parameters.os-network >>
+          name: "build new"
+          command: export GOPATH=~/go ; make -j 4 << parameters.os-network >>
   upload-repo:
     description: "upload packaging tar.gz"
     parameters:
@@ -74,7 +69,7 @@ commands:
     steps:
       - run:
           name: "upload S3 repo"
-          command: for item in << parameters.item >>; do aws s3 cp packages/${item}-*.tar.gz s3://$FRONTEND_BUCKET/packages/kittychain/$KITTYCHAIN_VERSION/; done
+          command: for item in << parameters.item >>; do aws s3 cp packages/${item}-*.tar.gz s3://$FRONTEND_BUCKET/packages/kittychain/$KITTYCHAIN_VERSION/; done   
   rpm-tagging:
     description: "rpm tagging for cypress"
     steps:
@@ -194,42 +189,51 @@ commands:
               else
                 echo "Need to delete branch manually"
               fi  
-  nofity-success:
+  nofity_success:
     steps:
       - run:
           name: "notify slack when job success"
           command : |
-            curl --data '{"text": "✅ Job **'$CIRCLE_JOB'** succeeded on **'$CIRCLE_BRANCH''$CIRCLE_TAG'**. Please see '$CIRCLE_BUILD_URL' for details."}' "$SLACK_WEBHOOK_URL"
+            curl --data '{"text": ""✅ Job **'$CIRCLE_JOB'** succeeded on **'$CIRCLE_BRANCH''$CIRCLE_TAG'**. Please see '$CIRCLE_BUILD_URL' for details."}' "$SLACK_WEBHOOK_URL"
           when: on_success
-  nofity-failure:
+  nofity_failure:
     steps:
       - run:
           name: "notify slack when job fail"
           command : |
-            curl --data '{"text": "❌ Job **'$CIRCLE_JOB'** failed on **'$CIRCLE_BRANCH'**. Please see '$CIRCLE_BUILD_URL' for details."}' "$SLACK_WEBHOOK_URL"
+            curl --data '{"text": ""❌ Job **'$CIRCLE_JOB'** failed on **'$CIRCLE_BRANCH'**. Please see '$CIRCLE_BUILD_URL' for details."}' "$SLACK_WEBHOOK_URL"
           when: on_fail
-  install-golang:
-    steps:
-      - run:
-          name: "Install golang on machine"
-          command: |
-            curl -O https://dl.google.com/go/go1.13.3.linux-amd64.tar.gz
-            mkdir $HOME/go1.13.3
-            tar -C $HOME/go1.13.3 -xzf go1.13.3.linux-amd64.tar.gz
+
 jobs:
   build:
     machine: true
     working_directory: ~/go/src/github.com/kittychain/kittychain
     steps:
       - checkout
-      - install-golang
       - pre-build
       - run:
           name: "Build"
           command: |
-            export PATH=$HOME/go1.13.3/go/bin:$PATH
+            curl -O https://dl.google.com/go/go1.12.5.linux-amd64.tar.gz
+            mkdir $HOME/go1.12.5
+            tar -C $HOME/go1.12.5 -xzf go1.12.5.linux-amd64.tar.gz
+            export PATH=$HOME/go1.12.5/go/bin:$PATH
             make fmt
             make all
+
+  build-linux:
+    machine: true
+    working_directory: ~/go/src/github.com/kittychain/kittychain
+    steps:
+      - checkout
+      - install_awscli
+      - pre-build
+      - build
+      - persist_to_workspace:
+          root: /home/circleci/go/src/github.com/kittychain/kittychain
+          paths: 
+            - build
+
   test-datasync:
     executor: test-executor
     steps:
@@ -267,13 +271,13 @@ jobs:
     executor: default
     steps:
       - run: 
-          name: "tests pass!"
+          name: "tests Success!"
           command: echo "tests pass!"
   tagger-verify:
     executor: default
     steps:
       - checkout
-      - tagger-verify
+      - tagger-verify        
 
   coverage:
     executor: test-executor
@@ -286,13 +290,13 @@ jobs:
           command: |
             set -e
             export GOPATH=/go
-            git clone --depth 1 https://$TEST_TOKEN@github.com/kittychain/kittychain-tests.git tests/testdata
-            make cover
+            git clone --depth 1 https://$TEST_TOKEN@github.com/kittychain/kittychain-tests.git tests/testdata   
+            make cover         
             mkdir -p /tmp/coverage_reports
             cp coverage_report.txt /tmp/coverage_reports/
             cp coverage_report.html /tmp/coverage_reports/
-      - nofity-failure
-      - nofity-success
+      - nofity_failure
+      - nofity_success
       - store_artifacts:
           path: /tmp/coverage_reports
       - codecov/upload:
@@ -308,8 +312,8 @@ jobs:
             make lint-try
             mkdir -p /tmp/linter_reports
             cp linter_report.txt /tmp/linter_reports/
-      - nofity-failure
-      - nofity-success
+      - nofity_failure
+      - nofity_success
       - store_artifacts:
           path: /tmp/linter_reports
 
@@ -319,10 +323,18 @@ jobs:
     working_directory: ~/go/src/github.com/kittychain/kittychain
     steps:
       - checkout
-      - install-golang
       - pre-build
       - build-packaging
       - upload-repo
+
+  packaging-linux-2:
+    machine: true
+    resource_class: large
+    working_directory: ~/go/src/github.com/kittychain/kittychain
+    steps:
+      - attach_workspace:
+          at: /home/circleci/go/src/github.com/kittychain/kittychain
+      - packaging
 
   packaging-linux-baobab:
     machine: true
@@ -330,7 +342,6 @@ jobs:
     working_directory: ~/go/src/github.com/kittychain/kittychain
     steps:
       - checkout
-      - install-golang
       - pre-build
       - build-packaging:
           os-network: "tar-baobab-linux-amd64-all"
@@ -343,7 +354,6 @@ jobs:
     working_directory: ~/go/src/github.com/kittychain/kittychain
     steps:
       - checkout
-      - install-golang
       - pre-build
       - build-packaging:
           os-network: "tar-darwin-amd64-all"
@@ -355,7 +365,6 @@ jobs:
     working_directory: ~/go/src/github.com/kittychain/kittychain
     steps:
       - checkout
-      - install-golang
       - pre-build
       - build-packaging:
           os-network: "tar-baobab-darwin-amd64-all"
@@ -378,8 +387,8 @@ jobs:
     executor: rpm-executor
     steps:
       - createrepo-update
-      - nofity-failure
-      - nofity-success
+      - nofity_failure
+      - nofity_success
 
   tag-verify:
     executor: test-executor
@@ -393,8 +402,8 @@ jobs:
       - add_ssh_keys
       - checkout
       - make-pr
-      - nofity-failure
-      - nofity-success
+      - nofity_failure
+      - nofity_success
 
   major-tagging:
     executor: default
@@ -462,7 +471,7 @@ workflows:
             - packaging-darwin-baobab
           filters: 
             tags:
-              only: /^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+.*/
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+-rc.*/
             branches:
               ignore: /.*/
 
@@ -494,7 +503,7 @@ workflows:
       - major-tagging:
           filters:
             branches:
-              only: master
+              only: master  
 
   nightly-coverage:
     triggers:
