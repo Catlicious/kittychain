@@ -68,22 +68,8 @@ type SimulatedBackend struct {
 // NewSimulatedBackend creates a new binding backend using a simulated blockchain
 // for testing purposes.
 func NewSimulatedBackend(alloc blockchain.GenesisAlloc) *SimulatedBackend {
-	genesis := blockchain.Genesis{Config: params.AllGxhashProtocolChanges, Alloc: alloc}
-	return newSimulatedBackend(genesis)
-}
-
-// NewSimulatedBackend creates a new binding backend using a simulated blockchain with given unitPrice.
-// for testing purposes.
-func NewSimulatedBackendWithGasPrice(alloc blockchain.GenesisAlloc, unitPrice uint64) *SimulatedBackend {
-	genesis := blockchain.Genesis{Config: params.AllGxhashProtocolChanges, Alloc: alloc}
-	genesis.Config.UnitPrice = unitPrice
-
-	return newSimulatedBackend(genesis)
-}
-
-// newSimulatedBackend creates a new binding backend with the genesis.
-func newSimulatedBackend(genesis blockchain.Genesis) *SimulatedBackend {
 	database := database.NewMemoryDBManager()
+	genesis := blockchain.Genesis{Config: params.AllGxhashProtocolChanges, Alloc: alloc}
 	genesis.MustCommit(database)
 	blockchain, _ := blockchain.NewBlockChain(database, nil, genesis.Config, gxhash.NewFaker(), vm.Config{})
 
