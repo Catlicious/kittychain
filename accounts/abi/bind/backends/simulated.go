@@ -75,12 +75,9 @@ func NewSimulatedBackend(alloc blockchain.GenesisAlloc) *SimulatedBackend {
 // NewSimulatedBackendWithGasPrice creates a new binding backend using a simulated blockchain with a given unitPrice.
 // for testing purposes.
 func NewSimulatedBackendWithGasPrice(alloc blockchain.GenesisAlloc, unitPrice uint64) *SimulatedBackend {
-	// Without changing `params.AllGxhashProtocolChanges`,
-	// the copied config is used for no side effect of other tests
-	cfg := *params.AllGxhashProtocolChanges
-	cfg.UnitPrice = unitPrice
+	genesis := blockchain.Genesis{Config: params.AllGxhashProtocolChanges, Alloc: alloc}
+	genesis.Config.UnitPrice = unitPrice
 
-	genesis := blockchain.Genesis{Config: &cfg, Alloc: alloc}
 	return newSimulatedBackend(genesis)
 }
 
